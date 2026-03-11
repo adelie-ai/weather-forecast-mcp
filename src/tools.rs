@@ -84,13 +84,13 @@ impl ToolRegistry {
             },
             {
                 "name": "weather_geocode",
-                "description": "Resolve a location name (city, region, or place) to geographic coordinates (latitude and longitude) using the Open-Meteo geocoding API. Returns up to 'count' matching locations with their coordinates, country, region, and elevation. Use the returned latitude/longitude with weather_get_current or weather_get_forecast.",
+                "description": "Resolve a location name to geographic coordinates (latitude and longitude) using the Open-Meteo geocoding API. Returns up to 'count' matching locations with their coordinates, country, region, and elevation. Use the returned latitude/longitude with weather_get_current or weather_get_forecast. IMPORTANT: Use simple city names for best results (e.g. 'Houston' not 'Houston, Texas' or 'Houston TX'). The API matches city names, not full addresses. If multiple cities share a name, filter the results by country or region rather than adding qualifiers to the query.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "name": {
                             "type": "string",
-                            "description": "Location name to search for. Can be a city, town, region, or place name. Example: 'London', 'New York', 'Tokyo'."
+                            "description": "Location name to search for. Use a simple city or place name for best results. Examples: 'London', 'New York', 'Tokyo'. Avoid including state abbreviations, country names, or comma-separated qualifiers."
                         },
                         "count": {
                             "type": "number",

@@ -60,15 +60,14 @@ async fn geocode_query(
     count: u32,
     language: &str,
 ) -> Result<Value> {
-    let url = format!(
-        "https://geocoding-api.open-meteo.com/v1/search?name={}&count={}&language={}&format=json",
-        urlencoding(name),
-        count,
-        language
-    );
-
     let resp = client
-        .get(&url)
+        .get("https://geocoding-api.open-meteo.com/v1/search")
+        .query(&[
+            ("name", name),
+            ("count", &count.to_string()),
+            ("language", language),
+            ("format", "json"),
+        ])
         .send()
         .await?
         .json::<GeocodingResponse>()
@@ -125,16 +124,4 @@ fn simplify_location_name(name: &str) -> Option<String> {
     }
 
     None
-}
-
-fn urlencoding(s: &str) -> String {
-    s.chars()
-        .flat_map(|c| {
-            if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '~' {
-                vec![c]
-            } else {
-                format!("%{:02X}", c as u32).chars().collect()
-            }
-        })
-        .collect()
 }

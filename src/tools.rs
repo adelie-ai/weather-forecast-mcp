@@ -140,20 +140,20 @@ impl ToolRegistry {
         let latitude = arguments
             .get("latitude")
             .and_then(value_as_f64)
-            .ok_or_else(|| McpError::InvalidToolParameters("Missing required parameter: latitude".to_string()))?;
+            .ok_or_else(|| {
+                McpError::InvalidToolParameters("Missing required parameter: latitude".to_string())
+            })?;
 
         let longitude = arguments
             .get("longitude")
             .and_then(value_as_f64)
-            .ok_or_else(|| McpError::InvalidToolParameters("Missing required parameter: longitude".to_string()))?;
+            .ok_or_else(|| {
+                McpError::InvalidToolParameters("Missing required parameter: longitude".to_string())
+            })?;
 
-        let temperature_unit = arguments
-            .get("temperature_unit")
-            .and_then(|v| v.as_str());
+        let temperature_unit = arguments.get("temperature_unit").and_then(|v| v.as_str());
 
-        let wind_speed_unit = arguments
-            .get("wind_speed_unit")
-            .and_then(|v| v.as_str());
+        let wind_speed_unit = arguments.get("wind_speed_unit").and_then(|v| v.as_str());
 
         let result = current::get_current_weather(
             &self.client,
@@ -171,12 +171,16 @@ impl ToolRegistry {
         let latitude = arguments
             .get("latitude")
             .and_then(value_as_f64)
-            .ok_or_else(|| McpError::InvalidToolParameters("Missing required parameter: latitude".to_string()))?;
+            .ok_or_else(|| {
+                McpError::InvalidToolParameters("Missing required parameter: latitude".to_string())
+            })?;
 
         let longitude = arguments
             .get("longitude")
             .and_then(value_as_f64)
-            .ok_or_else(|| McpError::InvalidToolParameters("Missing required parameter: longitude".to_string()))?;
+            .ok_or_else(|| {
+                McpError::InvalidToolParameters("Missing required parameter: longitude".to_string())
+            })?;
 
         let forecast_type_str = arguments
             .get("forecast_type")
@@ -191,22 +195,15 @@ impl ToolRegistry {
                     "Invalid forecast_type '{}'. Use 'daily' or 'hourly'.",
                     other
                 ))
-                .into())
+                .into());
             }
         };
 
-        let days = arguments
-            .get("days")
-            .and_then(value_as_u64)
-            .unwrap_or(7) as u32;
+        let days = arguments.get("days").and_then(value_as_u64).unwrap_or(7) as u32;
 
-        let temperature_unit = arguments
-            .get("temperature_unit")
-            .and_then(|v| v.as_str());
+        let temperature_unit = arguments.get("temperature_unit").and_then(|v| v.as_str());
 
-        let wind_speed_unit = arguments
-            .get("wind_speed_unit")
-            .and_then(|v| v.as_str());
+        let wind_speed_unit = arguments.get("wind_speed_unit").and_then(|v| v.as_str());
 
         let result = forecast::get_forecast(
             &self.client,
@@ -226,16 +223,13 @@ impl ToolRegistry {
         let name = arguments
             .get("name")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| McpError::InvalidToolParameters("Missing required parameter: name".to_string()))?;
+            .ok_or_else(|| {
+                McpError::InvalidToolParameters("Missing required parameter: name".to_string())
+            })?;
 
-        let count = arguments
-            .get("count")
-            .and_then(value_as_u64)
-            .unwrap_or(5) as u32;
+        let count = arguments.get("count").and_then(value_as_u64).unwrap_or(5) as u32;
 
-        let language = arguments
-            .get("language")
-            .and_then(|v| v.as_str());
+        let language = arguments.get("language").and_then(|v| v.as_str());
 
         let result = geocode::geocode_location(&self.client, name, count, language).await?;
 
@@ -246,12 +240,16 @@ impl ToolRegistry {
         let latitude = arguments
             .get("latitude")
             .and_then(value_as_f64)
-            .ok_or_else(|| McpError::InvalidToolParameters("Missing required parameter: latitude".to_string()))?;
+            .ok_or_else(|| {
+                McpError::InvalidToolParameters("Missing required parameter: latitude".to_string())
+            })?;
 
         let longitude = arguments
             .get("longitude")
             .and_then(value_as_f64)
-            .ok_or_else(|| McpError::InvalidToolParameters("Missing required parameter: longitude".to_string()))?;
+            .ok_or_else(|| {
+                McpError::InvalidToolParameters("Missing required parameter: longitude".to_string())
+            })?;
 
         let result = alerts::get_alerts(&self.client, latitude, longitude).await?;
 

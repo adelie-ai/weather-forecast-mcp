@@ -3,19 +3,19 @@
 // Binary crate for weather-forecast-mcp - uses library crate
 
 use axum::{
-    extract::{ws::WebSocketUpgrade, State},
+    Router,
+    extract::{State, ws::WebSocketUpgrade},
     response::Response,
     routing::get,
-    Router,
 };
 use clap::{Parser, ValueEnum};
-use weather_forecast_mcp::error::Result;
-use weather_forecast_mcp::server::McpServer;
-use weather_forecast_mcp::transport::StdioTransportHandler;
 use serde_json::Value;
 use std::fmt;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+use weather_forecast_mcp::error::Result;
+use weather_forecast_mcp::server::McpServer;
+use weather_forecast_mcp::transport::StdioTransportHandler;
 
 #[derive(Clone, Debug, ValueEnum)]
 enum TransportMode {
@@ -183,10 +183,11 @@ async fn handle_websocket_connection(socket: axum::extract::ws::WebSocket, serve
                 // Send response if present
                 if let Some(resp) = response
                     && let Ok(resp_str) = serde_json::to_string(&resp)
-                        && let Err(e) = sender.send(Message::Text(resp_str.into())).await {
-                            eprintln!("Error sending WebSocket response: {}", e);
-                            break;
-                        }
+                    && let Err(e) = sender.send(Message::Text(resp_str.into())).await
+                {
+                    eprintln!("Error sending WebSocket response: {}", e);
+                    break;
+                }
             }
             Ok(Message::Close(_)) => {
                 break;
@@ -203,11 +204,12 @@ async fn handle_websocket_connection(socket: axum::extract::ws::WebSocket, serve
 async fn handle_jsonrpc_message(server: Arc<McpServer>, message: Value) -> Option<Value> {
     // Validate JSON-RPC version (if present)
     if let Some(jsonrpc_version) = message.get("jsonrpc").and_then(|v| v.as_str())
-        && jsonrpc_version != "2.0" {
-            let id = message.get("id").cloned();
-            let error_msg = format!("Invalid JSON-RPC version: {}", jsonrpc_version);
-            return Some(jsonrpc_error_response(id, -32600, &error_msg, None));
-        }
+        && jsonrpc_version != "2.0"
+    {
+        let id = message.get("id").cloned();
+        let error_msg = format!("Invalid JSON-RPC version: {}", jsonrpc_version);
+        return Some(jsonrpc_error_response(id, -32600, &error_msg, None));
+    }
 
     // Extract JSON-RPC fields
     let id = message.get("id").cloned();

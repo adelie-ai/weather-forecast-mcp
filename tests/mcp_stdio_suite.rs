@@ -1,6 +1,6 @@
 #![deny(warnings)]
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, ChildStdin, Command, Stdio};
 
@@ -118,10 +118,10 @@ fn extract_value(tool_result: &Value) -> Value {
         .unwrap_or_else(|| panic!("expected result.content array, got: {tool_result}"));
 
     for entry in content {
-        if entry.get("type") == Some(&Value::String("json".to_string())) {
-            if let Some(v) = entry.get("value") {
-                return v.clone();
-            }
+        if entry.get("type") == Some(&Value::String("json".to_string()))
+            && let Some(v) = entry.get("value")
+        {
+            return v.clone();
         }
     }
 
@@ -486,18 +486,12 @@ fn test_get_current_london_network() {
         weather.get("weather_description").is_some(),
         "missing weather_description"
     );
-    assert!(
-        weather.get("wind_speed").is_some(),
-        "missing wind_speed"
-    );
+    assert!(weather.get("wind_speed").is_some(), "missing wind_speed");
     assert!(
         weather.get("relative_humidity_pct").is_some(),
         "missing relative_humidity_pct"
     );
-    assert!(
-        weather.get("units").is_some(),
-        "missing units"
-    );
+    assert!(weather.get("units").is_some(), "missing units");
     let lat = weather.get("latitude").and_then(|v| v.as_f64()).unwrap();
     assert!(
         (lat - 51.5074).abs() < 0.5,
@@ -540,10 +534,7 @@ fn test_get_daily_forecast_tokyo_network() {
         .get("days")
         .and_then(|v| v.as_array())
         .expect("expected 'days' array");
-    assert!(
-        !days.is_empty(),
-        "expected at least one day in forecast"
-    );
+    assert!(!days.is_empty(), "expected at least one day in forecast");
     assert!(
         days.len() <= 5,
         "expected at most 5 days (requested 5), got {}",

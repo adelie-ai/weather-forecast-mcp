@@ -13,11 +13,7 @@ use serde_json::Value;
 /// Currently returns a structured placeholder indicating the alerts capability
 /// is not yet backed by a live alert API. Integrate an alert provider
 /// (e.g. NWS CAP for US, Meteoalarm for Europe) here in the future.
-pub async fn get_alerts(
-    _client: &reqwest::Client,
-    latitude: f64,
-    longitude: f64,
-) -> Result<Value> {
+pub async fn get_alerts(_client: &reqwest::Client, latitude: f64, longitude: f64) -> Result<Value> {
     Ok(serde_json::json!({
         "latitude": latitude,
         "longitude": longitude,

@@ -43,10 +43,10 @@ pub async fn geocode_location(
             if let Some(simplified) = simplify_location_name(name) {
                 geocode_query(client, &simplified, count, language).await
             } else {
-                Err(
-                    WeatherError::LocationNotFound(format!("No locations found for: {}", name))
-                        .into(),
-                )
+                Err(WeatherError::LocationNotFound(format!(
+                    "No locations found for: {}",
+                    name
+                )))
             }
         }
     }
@@ -74,9 +74,10 @@ async fn geocode_query(
 
     let results = resp.results.unwrap_or_default();
     if results.is_empty() {
-        return Err(
-            WeatherError::LocationNotFound(format!("No locations found for: {}", name)).into(),
-        );
+        return Err(WeatherError::LocationNotFound(format!(
+            "No locations found for: {}",
+            name
+        )));
     }
 
     let locations: Vec<Value> = results

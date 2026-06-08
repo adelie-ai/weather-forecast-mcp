@@ -46,8 +46,7 @@ pub async fn get_current_weather(
             "{}: {}",
             err.as_bool().unwrap_or(true),
             reason
-        ))
-        .into());
+        )));
     }
 
     let current = resp

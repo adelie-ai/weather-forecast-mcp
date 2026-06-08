@@ -6,6 +6,7 @@
 // a proper alert source (e.g. NWS CAP feed, Meteoalarm) in the future.
 
 use crate::error::Result;
+use crate::operations::validate_coordinates;
 use serde_json::Value;
 
 /// Return weather alerts for given coordinates.
@@ -14,6 +15,7 @@ use serde_json::Value;
 /// is not yet backed by a live alert API. Integrate an alert provider
 /// (e.g. NWS CAP for US, Meteoalarm for Europe) here in the future.
 pub async fn get_alerts(_client: &reqwest::Client, latitude: f64, longitude: f64) -> Result<Value> {
+    validate_coordinates(latitude, longitude)?;
     Ok(serde_json::json!({
         "latitude": latitude,
         "longitude": longitude,

@@ -110,7 +110,11 @@ impl Drop for McpStdioClient {
     }
 }
 
-/// Extract the `value` field from the first `type: json` content entry.
+/// Extract and parse the JSON payload from the first `type: text` content entry.
+///
+/// Tool results are serialised as `{"type":"text","text":"<json string>"}` per
+/// the MCP spec. This helper deserialises the inner JSON string back into a
+/// `Value` so that tests can inspect the structured data.
 fn extract_value(tool_result: &Value) -> Value {
     let content = tool_result
         .get("content")
@@ -118,14 +122,15 @@ fn extract_value(tool_result: &Value) -> Value {
         .unwrap_or_else(|| panic!("expected result.content array, got: {tool_result}"));
 
     for entry in content {
-        if entry.get("type") == Some(&Value::String("json".to_string()))
-            && let Some(v) = entry.get("value")
+        if entry.get("type") == Some(&Value::String("text".to_string()))
+            && let Some(text) = entry.get("text").and_then(|v| v.as_str())
         {
-            return v.clone();
+            return serde_json::from_str(text)
+                .unwrap_or_else(|e| panic!("text content is not valid JSON: {e}: {text}"));
         }
     }
 
-    panic!("no json content entry in: {tool_result}");
+    panic!("no text content entry in: {tool_result}");
 }
 
 fn network_tests_enabled() -> bool {
@@ -391,15 +396,23 @@ fn test_get_forecast_invalid_temperature_unit() {
 fn test_get_alerts_invalid_latitude() {
     let mut client = McpStdioClient::start();
     client.initialize();
-    // alerts.rs doesn't validate coordinates directly yet; this tests the
-    // parameter extraction path. If validation is added later this test will
-    // still pass (it already returns an error or a result — we just need it
-    // not to panic).
-    let _ = client.tool_call(
+    let result = client.tool_call(
         "weather_get_alerts",
-        json!({"latitude": 51.5, "longitude": -0.1}),
+        json!({"latitude": 999.0, "longitude": -0.1}),
     );
-    // No assertion: this is a smoke test to ensure the tool call completes.
+    expect_err_contains(result, "latitude");
+}
+
+/// `weather_get_alerts` must reject out-of-range longitude.
+#[test]
+fn test_get_alerts_invalid_longitude() {
+    let mut client = McpStdioClient::start();
+    client.initialize();
+    let result = client.tool_call(
+        "weather_get_alerts",
+        json!({"latitude": 51.5, "longitude": 999.0}),
+    );
+    expect_err_contains(result, "longitude");
 }
 
 /// `weather_geocode` must reject a missing name.
@@ -428,8 +441,11 @@ fn test_geocode_london_network() {
         .tool_call("weather_geocode", json!({"name": "London", "count": 3}))
         .expect("geocode London");
 
-    let locations = extract_value(&result);
-    let arr = locations.as_array().expect("expected array of locations");
+    let payload = extract_value(&result);
+    let arr = payload
+        .get("locations")
+        .and_then(|v| v.as_array())
+        .expect("expected locations array in geocode response");
     assert!(!arr.is_empty(), "expected at least one geocode result");
 
     let first = &arr[0];

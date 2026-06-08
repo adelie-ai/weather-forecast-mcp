@@ -173,6 +173,17 @@ impl StdioTransportHandler {
             ))
         })?;
 
+        // Guard against hostile or malformed Content-Length values before
+        // allocating: reject anything larger than 16 MiB.
+        const MAX_MESSAGE_BYTES: usize = 16 * 1024 * 1024;
+        if content_length > MAX_MESSAGE_BYTES {
+            return Err(TransportError::InvalidMessage(format!(
+                "Content-Length {} exceeds maximum allowed size of {} bytes",
+                content_length, MAX_MESSAGE_BYTES
+            ))
+            .into());
+        }
+
         // Read headers until blank line.
         loop {
             let mut header_line = String::new();

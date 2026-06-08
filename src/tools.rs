@@ -15,7 +15,10 @@ impl ToolRegistry {
     /// Create a new tool registry
     pub fn new() -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .expect("reqwest client"),
         }
     }
 
@@ -38,10 +41,12 @@ impl ToolRegistry {
                         },
                         "temperature_unit": {
                             "type": "string",
+                            "enum": ["celsius", "fahrenheit"],
                             "description": "Temperature unit. One of: 'celsius' (default), 'fahrenheit'."
                         },
                         "wind_speed_unit": {
                             "type": "string",
+                            "enum": ["kmh", "ms", "mph", "kn"],
                             "description": "Wind speed unit. One of: 'kmh' (default), 'ms', 'mph', 'kn'."
                         }
                     },
@@ -64,18 +69,21 @@ impl ToolRegistry {
                         },
                         "forecast_type": {
                             "type": "string",
-                            "description": "Forecast resolution. One of: 'daily' (default), 'hourly'."
+                            "enum": ["daily", "hourly"],
+                            "description": "Forecast resolution. One of: 'daily' (default, days 1-16), 'hourly' (default days=1, max 16)."
                         },
                         "days": {
                             "type": "number",
-                            "description": "Number of forecast days. Range: 1-16 (default: 7). Clamped to valid range automatically."
+                            "description": "Number of forecast days. Range: 1-16. Daily default: 7. Hourly default: 1 (24 rows). Clamped to valid range automatically."
                         },
                         "temperature_unit": {
                             "type": "string",
+                            "enum": ["celsius", "fahrenheit"],
                             "description": "Temperature unit. One of: 'celsius' (default), 'fahrenheit'."
                         },
                         "wind_speed_unit": {
                             "type": "string",
+                            "enum": ["kmh", "ms", "mph", "kn"],
                             "description": "Wind speed unit. One of: 'kmh' (default), 'ms', 'mph', 'kn'."
                         }
                     },
@@ -199,7 +207,15 @@ impl ToolRegistry {
             }
         };
 
-        let days = arguments.get("days").and_then(value_as_u64).unwrap_or(7) as u32;
+        // For hourly forecasts default to 1 day (24 rows); daily defaults to 7.
+        let default_days: u64 = match forecast_type {
+            forecast::ForecastType::Hourly => 1,
+            forecast::ForecastType::Daily => 7,
+        };
+        let days = arguments
+            .get("days")
+            .and_then(value_as_u64)
+            .unwrap_or(default_days) as u32;
 
         let temperature_unit = arguments.get("temperature_unit").and_then(|v| v.as_str());
 
@@ -274,13 +290,13 @@ fn value_as_u64(v: &Value) -> Option<u64> {
 }
 
 /// Wrap a JSON value in the MCP tool result content format.
+///
+/// The MCP spec defines `"type": "text"` as the standard content type for tool
+/// results. The value is serialized to a JSON string so that any MCP client can
+/// parse it without needing to understand a non-standard `"type": "json"` entry.
 fn mcp_tool_result_json(value: Value) -> Value {
+    let text = serde_json::to_string(&value).unwrap_or_default();
     serde_json::json!({
-        "content": [
-            {
-                "type": "json",
-                "value": value,
-            }
-        ]
+        "content": [{"type": "text", "text": text}]
     })
 }

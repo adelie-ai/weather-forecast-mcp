@@ -93,7 +93,7 @@ async fn geocode_query(
         })
         .collect();
 
-    Ok(serde_json::json!(locations))
+    Ok(serde_json::json!({ "locations": locations }))
 }
 
 /// Try to extract a simpler location name from a qualified string.
@@ -111,7 +111,7 @@ fn simplify_location_name(name: &str) -> Option<String> {
     // Take everything except the last token if it looks like a 2-3 letter qualifier
     let parts: Vec<&str> = name.split_whitespace().collect();
     if parts.len() >= 2 {
-        let last = parts.last().unwrap();
+        let last = parts[parts.len() - 1];
         if last.len() <= 3 && last.chars().all(|c| c.is_ascii_alphabetic()) {
             let simplified = parts[..parts.len() - 1].join(" ");
             if !simplified.is_empty() {

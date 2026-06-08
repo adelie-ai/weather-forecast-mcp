@@ -67,8 +67,7 @@ pub async fn get_forecast(
             "{}: {}",
             err.as_bool().unwrap_or(true),
             reason
-        ))
-        .into());
+        )));
     }
 
     match forecast_type {

@@ -203,6 +203,38 @@ fn test_initialize_response_shape() {
     );
 }
 
+/// The `initialize` response must carry a non-empty `instructions` string so the
+/// daemon can capture it as the server's searchable description. The blurb must
+/// name the tools and reflect the geocode-first discovery pattern.
+#[test]
+fn test_initialize_response_includes_instructions() {
+    let mut client = McpStdioClient::start();
+    let resp = client
+        .call(
+            "initialize",
+            json!({"protocolVersion":"2025-11-25","capabilities":{}}),
+        )
+        .expect("initialize");
+
+    let result = resp.get("result").expect("result field");
+    let instructions = result
+        .get("instructions")
+        .and_then(|v| v.as_str())
+        .expect("initialize result must include an instructions string");
+    assert!(
+        !instructions.trim().is_empty(),
+        "instructions must not be blank"
+    );
+
+    let lower = instructions.to_lowercase();
+    for needle in ["weather_geocode", "weather_get_forecast", "coordinates"] {
+        assert!(
+            lower.contains(needle),
+            "instructions should mention '{needle}', got: {instructions}"
+        );
+    }
+}
+
 /// `tools/list` must return the expected set of tool names.
 #[test]
 fn test_tools_list_contains_expected_tools() {

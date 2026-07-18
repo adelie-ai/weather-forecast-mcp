@@ -16,7 +16,18 @@ use mcp_core::ServerConfig;
 /// surfaced in the MCP `initialize` response -- is testable without spawning the
 /// binary.
 pub fn server_config() -> ServerConfig {
-    ServerConfig::new("weather-forecast-mcp", env!("CARGO_PKG_VERSION"))
+    ServerConfig::new("weather-forecast-mcp", env!("CARGO_PKG_VERSION")).instructions(
+        "Weather lookup by place name: current conditions plus daily and hourly \
+        forecasts up to 16 days, anywhere in the world, from the free Open-Meteo \
+        API (no API key or setup needed). Reach for it whenever someone asks what \
+        the weather is like, whether it will rain, how hot or cold it will be, or \
+        what to expect for a given day or an upcoming trip. Typical flow: call \
+        weather_geocode to turn a place name like 'London' or 'Tokyo' into \
+        latitude/longitude coordinates, then pass those to weather_get_current or \
+        weather_get_forecast (temperature and wind-speed units are configurable). \
+        Note that weather_get_alerts is a placeholder and does not yet return live \
+        weather warnings.",
+    )
 }
 
 #[cfg(test)]

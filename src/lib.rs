@@ -7,6 +7,8 @@ pub mod error;
 pub mod operations;
 pub mod service;
 
+pub use service::WeatherService;
+
 use mcp_core::ServerConfig;
 
 /// Build the [`ServerConfig`] this server starts with.
@@ -28,6 +30,11 @@ pub fn server_config() -> ServerConfig {
         Note that weather_get_alerts is a placeholder and does not yet return live \
         weather warnings.",
     )
+}
+
+/// Construct the weather service with built-in defaults, for in-process (compiled-in) hosting.
+pub fn build_service() -> WeatherService {
+    WeatherService::new()
 }
 
 #[cfg(test)]
@@ -73,5 +80,18 @@ mod tests {
                 "instructions should mention '{needle}', got: {instructions}"
             );
         }
+    }
+
+    /// Acceptance (da#538): the in-process entry point builds a service that is
+    /// wired to the `McpService` trait and advertises the weather tool set, so a
+    /// client can compile this server in and get a working, zero-config server.
+    #[test]
+    fn build_service_exposes_tools() {
+        use mcp_core::McpService;
+        let svc = build_service();
+        assert!(
+            !svc.tools().is_empty(),
+            "weather build_service() must expose at least one tool"
+        );
     }
 }

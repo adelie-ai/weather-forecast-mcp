@@ -1,2 +1,5 @@
-.cursor
+# Cursor's local state, but keep the committed project rules under .cursor/rules/.
+# The directory itself must not be excluded, or the negation cannot re-include it.
+.cursor/*
+!.cursor/rules/
 target

@@ -3,3 +3,6 @@
 .cursor/*
 !.cursor/rules/
 target
+
+# Gate and build output, never committed.
+*.log

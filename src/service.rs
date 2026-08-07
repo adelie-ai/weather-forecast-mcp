@@ -340,3 +340,132 @@ async fn call_get_alerts(client: &reqwest::Client, args: &Value) -> Result<ToolR
 
     Ok(ToolReply::json(&result)?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The metrics registry [`mcp_core::telemetry::metrics`] records into is
+    /// process-global, and `cargo test` runs a file's tests concurrently by
+    /// default. Every test below either records into the registry (a writer)
+    /// or reads it back (a reader), so two tests running at once can inflate
+    /// each other's before/after delta. This guards every test in this
+    /// module so they run one at a time relative to each other; it holds no
+    /// data of its own.
+    static METRICS_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn lock_metrics() -> std::sync::MutexGuard<'static, ()> {
+        METRICS_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// AC (mcp-core#40): a fault reaching outward -- an explicit upstream
+    /// error, or a response missing the shape this server expects -- is
+    /// counted.
+    #[test]
+    fn upstream_failure_reason_counts_api_and_malformed_response_faults() {
+        assert_eq!(
+            upstream_failure_reason(&WeatherError::ApiError("rate limited".into())),
+            Some("api_error")
+        );
+        assert_eq!(
+            upstream_failure_reason(&WeatherError::ForecastUnavailable(
+                "No daily data in response".into()
+            )),
+            Some("malformed_response")
+        );
+    }
+
+    /// AC (mcp-core#40): a transport-level fault (here, a malformed URL that
+    /// fails to build a request -- offline, no network access) is counted
+    /// too.
+    #[tokio::test]
+    async fn upstream_failure_reason_counts_a_network_fault() {
+        let build_err = reqwest::Client::new()
+            .get("not a valid url")
+            .send()
+            .await
+            .expect_err("a malformed url must fail before any network access");
+        assert_eq!(
+            upstream_failure_reason(&WeatherError::Http(build_err)),
+            Some("network")
+        );
+    }
+
+    /// AC (mcp-core#40, rule 8.2): a "no match" answer from the upstream
+    /// geocoder is a normal business outcome, and coordinates or units
+    /// rejected by local validation never reach the network at all -- neither
+    /// is a fault reaching outward, so both are excluded by the exhaustive
+    /// match rather than left to fall through silently.
+    #[test]
+    fn upstream_failure_reason_excludes_business_declines_and_local_validation() {
+        assert_eq!(
+            upstream_failure_reason(&WeatherError::LocationNotFound(
+                "No locations found for: nowhere".into()
+            )),
+            None
+        );
+        assert_eq!(
+            upstream_failure_reason(&WeatherError::InvalidCoordinates(
+                "Latitude 999 is out of range [-90, 90]".into()
+            )),
+            None
+        );
+        assert_eq!(
+            upstream_failure_reason(&WeatherError::InvalidParameters(
+                "Invalid temperature_unit 'kelvin'".into()
+            )),
+            None
+        );
+    }
+
+    /// AC (mcp-core#40): `record_upstream_failure` moves the counter only for
+    /// a reason [`upstream_failure_reason`] counts, labelled by tool and
+    /// reason.
+    #[test]
+    fn record_upstream_failure_increments_only_for_counted_reasons() {
+        let _guard = lock_metrics();
+        let labels = [
+            Label::new("tool", "weather_get_current"),
+            Label::new("reason", "api_error"),
+        ];
+        let before = counter_total("weather.upstream_failure", &labels);
+
+        let ok: Result<Value, WeatherError> = Ok(json!({}));
+        record_upstream_failure("weather_get_current", &ok);
+        let decline: Result<Value, WeatherError> = Err(WeatherError::LocationNotFound("x".into()));
+        record_upstream_failure("weather_get_current", &decline);
+        assert_eq!(
+            counter_total("weather.upstream_failure", &labels),
+            before,
+            "a successful call or a business decline must not move the counter"
+        );
+
+        let api_failed: Result<Value, WeatherError> = Err(WeatherError::ApiError("x".into()));
+        record_upstream_failure("weather_get_current", &api_failed);
+        assert_eq!(
+            counter_total("weather.upstream_failure", &labels),
+            before + 1,
+            "an upstream API fault must increment the counter, labelled by tool and reason"
+        );
+    }
+
+    fn counter_total(name: &str, labels: &[Label]) -> u64 {
+        metrics::global()
+            .snapshot()
+            .counters
+            .iter()
+            .find(|counter| counter.name == name && same_labels(&counter.labels, labels))
+            .map_or(0, |counter| counter.total)
+    }
+
+    fn same_labels(recorded: &[Label], wanted: &[Label]) -> bool {
+        recorded.len() == wanted.len()
+            && wanted.iter().all(|want| {
+                recorded
+                    .iter()
+                    .any(|have| have.key() == want.key() && have.value() == want.value())
+            })
+    }
+}

@@ -123,3 +123,37 @@ fn simplify_location_name(name: &str) -> Option<String> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::operations::test_capture::capture_events;
+
+    /// A location name that is unmistakably a marker, never a real place.
+    const SENTINEL: &str = "MARKER-weather-geocode-9f3d1c2a";
+
+    /// AC (mcp-core#40, D10): the location name reaches the log at DEBUG
+    /// only, never at a louder level, so a `RUST_LOG=info` deployment never
+    /// prints it.
+    #[test]
+    fn log_geocode_request_puts_the_name_at_debug_only() {
+        let events = capture_events(|| log_geocode_request(SENTINEL, 5, "en"));
+
+        assert_eq!(
+            events.len(),
+            1,
+            "a geocoding request must log exactly one event: {events:?}"
+        );
+        let (level, fields) = &events[0];
+        assert_eq!(
+            *level,
+            tracing::Level::DEBUG,
+            "a geocoding request must log at DEBUG, so it stays off the INFO band"
+        );
+        assert_eq!(
+            fields.get("name").map(String::as_str),
+            Some(SENTINEL),
+            "the event must carry the location name that was requested: {fields:?}"
+        );
+    }
+}

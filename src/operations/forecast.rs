@@ -261,3 +261,36 @@ fn build_hourly_response(resp: &Value, temp_unit: &str, wind_unit: &str) -> Resu
         "hours": hours,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::operations::test_capture::capture_events;
+
+    /// A URL that is unmistakably a marker, never a real upstream request.
+    const SENTINEL_URL: &str = "https://example.com/MARKER-weather-forecast-9f3d1c2a";
+
+    /// AC (mcp-core#40, D10): the request URL (it embeds the coordinates)
+    /// reaches the log at DEBUG only, never at a louder level.
+    #[test]
+    fn log_forecast_request_puts_the_url_at_debug_only() {
+        let events = capture_events(|| log_forecast_request(SENTINEL_URL));
+
+        assert_eq!(
+            events.len(),
+            1,
+            "a forecast request must log exactly one event: {events:?}"
+        );
+        let (level, fields) = &events[0];
+        assert_eq!(
+            *level,
+            tracing::Level::DEBUG,
+            "a forecast request must log at DEBUG, so it stays off the INFO band"
+        );
+        assert_eq!(
+            fields.get("url").map(String::as_str),
+            Some(SENTINEL_URL),
+            "the event must carry the url that was requested: {fields:?}"
+        );
+    }
+}

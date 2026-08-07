@@ -9,8 +9,13 @@ use crate::operations::{
 use serde_json::Value;
 
 /// Fetch current weather conditions for given coordinates.
+///
+/// `base_url` is the forecast API's host (no path); production callers pass
+/// [`crate::DEFAULT_FORECAST_BASE_URL`], and a test can point it at a local
+/// mock server instead.
 pub async fn get_current_weather(
     client: &reqwest::Client,
+    base_url: &str,
     latitude: f64,
     longitude: f64,
     temperature_unit: Option<&str>,
@@ -25,15 +30,17 @@ pub async fn get_current_weather(
     validate_wind_speed_unit(wind_unit)?;
 
     let url = format!(
-        "https://api.open-meteo.com/v1/forecast\
+        "{}/v1/forecast\
         ?latitude={}&longitude={}\
         &current=temperature_2m,relative_humidity_2m,apparent_temperature,\
         is_day,precipitation,rain,showers,snowfall,weather_code,\
         cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,\
         wind_direction_10m,wind_gusts_10m\
         &temperature_unit={}&wind_speed_unit={}&timezone=auto",
-        latitude, longitude, temp_unit, wind_unit
+        base_url, latitude, longitude, temp_unit, wind_unit
     );
+
+    log_current_request(&url);
 
     let resp: Value = client.get(&url).send().await?.json().await?;
 
@@ -123,6 +130,15 @@ pub fn wmo_code_description(code: u32) -> &'static str {
         99 => "Thunderstorm with heavy hail",
         _ => "Unknown",
     }
+}
+
+/// Log that a current-weather request is starting: the URL embeds the
+/// coordinates, so it stays at DEBUG and is never attached to a span (a span
+/// field would leave the process with `otel` on regardless of level). Kept
+/// as its own function so a test can drive it directly, without a real HTTP
+/// client.
+fn log_current_request(url: &str) {
+    tracing::debug!(url = %url, "requesting upstream weather API");
 }
 
 #[cfg(test)]

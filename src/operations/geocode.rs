@@ -23,11 +23,16 @@ struct GeocodingResult {
 
 /// Geocode a location name and return matching results.
 ///
+/// `base_url` is the geocoding API's host (no path); production callers pass
+/// [`crate::DEFAULT_GEOCODING_BASE_URL`], and a test can point it at a local
+/// mock server instead.
+///
 /// If the full query returns no results and contains a comma or whitespace-separated
 /// qualifier (e.g. "Houston, Texas" or "Houston TX"), retries with just the first
 /// part as a fallback, since Open-Meteo works best with simple city names.
 pub async fn geocode_location(
     client: &reqwest::Client,
+    base_url: &str,
     name: &str,
     count: u32,
     language: Option<&str>,
@@ -35,13 +40,13 @@ pub async fn geocode_location(
     let count = count.clamp(1, 10);
     let language = language.unwrap_or("en");
 
-    match geocode_query(client, name, count, language).await {
+    match geocode_query(client, base_url, name, count, language).await {
         Ok(locations) => Ok(locations),
         Err(_) => {
             // Try simplified name: strip everything after a comma, or take the first
             // multi-word token group before a state/country qualifier.
             if let Some(simplified) = simplify_location_name(name) {
-                geocode_query(client, &simplified, count, language).await
+                geocode_query(client, base_url, &simplified, count, language).await
             } else {
                 Err(WeatherError::LocationNotFound(format!(
                     "No locations found for: {}",
@@ -55,12 +60,15 @@ pub async fn geocode_location(
 /// Execute a single geocoding query against the Open-Meteo API.
 async fn geocode_query(
     client: &reqwest::Client,
+    base_url: &str,
     name: &str,
     count: u32,
     language: &str,
 ) -> Result<Value> {
+    log_geocode_request(name, count, language);
+
     let resp = client
-        .get("https://geocoding-api.open-meteo.com/v1/search")
+        .get(format!("{base_url}/v1/search"))
         .query(&[
             ("name", name),
             ("count", &count.to_string()),
@@ -122,6 +130,15 @@ fn simplify_location_name(name: &str) -> Option<String> {
     }
 
     None
+}
+
+/// Log that a geocoding request is starting: the location name is the tool
+/// argument this call sends upstream, so it stays at DEBUG and is never
+/// attached to a span (a span field would leave the process with `otel` on
+/// regardless of level). Kept as its own function so a test can drive it
+/// directly, without a real HTTP client.
+fn log_geocode_request(name: &str, count: u32, language: &str) {
+    tracing::debug!(name = %name, count, language, "requesting upstream geocoding API");
 }
 
 #[cfg(test)]

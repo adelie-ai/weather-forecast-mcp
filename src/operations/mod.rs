@@ -48,6 +48,10 @@ pub fn validate_wind_speed_unit(unit: &str) -> Result<()> {
     }
 }
 
+/// Test-only capturing `tracing` layer shared by the outbound-request
+/// debug-log tests in `geocode.rs`, `current.rs` and `forecast.rs`. Captures
+/// events only (span fields are not needed here -- these are plain `debug!`
+/// calls, not `#[instrument]` spans).
 #[cfg(test)]
 pub(crate) mod test_capture {
     use std::collections::BTreeMap;

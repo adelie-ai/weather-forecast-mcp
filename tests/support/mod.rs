@@ -370,6 +370,13 @@ pub const MALFORMED_LAT: f64 = 55.667788;
 /// all, so this is its only failure branch.
 pub const INVALID_LAT: f64 = 999999.0;
 
+/// `weather_get_current`'s second failure case: an invalid `temperature_unit`,
+/// rejected by local validation before any network call.
+/// `WeatherError::InvalidParameters`'s `Display` quotes the caller's raw
+/// string back verbatim (`operations/mod.rs::validate_temperature_unit`) --
+/// the sharpest test of that variant, and until this row it had none.
+pub const INVALID_PARAM_SENTINEL: &str = "MARKER-weather-badunit-7d2e91a4";
+
 pub fn tool_cases() -> Vec<ToolCase> {
     vec![
         ToolCase {
@@ -395,6 +402,16 @@ pub fn tool_cases() -> Vec<ToolCase> {
             expect: Expect::Failure,
             arguments: json!({"latitude": RATE_LIMIT_LAT, "longitude": SENTINEL_LON}),
             sentinel: RATE_LIMIT_LAT.to_string(),
+        },
+        ToolCase {
+            tool: "weather_get_current",
+            expect: Expect::Failure,
+            arguments: json!({
+                "latitude": SENTINEL_LAT,
+                "longitude": SENTINEL_LON,
+                "temperature_unit": INVALID_PARAM_SENTINEL,
+            }),
+            sentinel: INVALID_PARAM_SENTINEL.to_string(),
         },
         ToolCase {
             tool: "weather_get_forecast",

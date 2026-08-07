@@ -120,6 +120,7 @@ so a test can point a compiled binary at a local mock server instead of a live s
 ```bash
 just check                       # default features: fmt, lint, build, test
 just check-otel                  # the same, built with --features otel
+just check-all                   # both -- what the pre-push hook runs
 just test-integration            # additionally launch the live Open-Meteo API
 ```
 

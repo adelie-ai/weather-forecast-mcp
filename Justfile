@@ -20,8 +20,8 @@ test: build
   docker rm -f {{container}} >/dev/null 2>&1 || true
 
 # --- Local verification ("local CI") ---
-# Run locally instead of GitHub Actions. `install-hooks` wires `check` into a
-# git pre-push hook so it runs automatically before every push.
+# Run locally instead of GitHub Actions. `install-hooks` wires `check-all` into
+# a git pre-push hook so it runs automatically before every push.
 # NOTE: the existing `build`/`test` recipes above are Docker-based (build the
 # test image / run the integration container). `check` needs a fast host-side
 # cargo compile + unit-test gate, so it uses `rust-build`/`rust-test` instead.
@@ -38,10 +38,22 @@ rust-test:
   cargo test
 test-integration:
   cargo test -- --ignored
+
+# The second required gate configuration: OTLP export compiled in (still off
+# at runtime unless OTEL_* variables are set). `check` alone never builds this
+# path, so a change that only compiles with `otel` off would pass silently.
+check-otel: fmt-check
+  cargo clippy --all-targets --features otel -- -D warnings
+  cargo build --features otel
+  cargo test --features otel
+
+# Every configuration this crate ships in. This is what the pre-push hook
+# runs -- `check` alone would let an otel-only regression through unnoticed.
+check-all: check check-otel
 premerge:
   git fetch origin
   git rebase origin/main
-  just check
+  just check-all
 install-hooks:
   git config core.hooksPath .githooks
   @echo "pre-push hook active — bypass once with: git push --no-verify"

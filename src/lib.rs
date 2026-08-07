@@ -11,6 +11,16 @@ pub use service::WeatherService;
 
 use mcp_core::ServerConfig;
 
+/// The Open-Meteo geocoding API's production host (no path). Overridable via
+/// `--geocoding-base-url` / `WEATHER_GEOCODING_BASE_URL`, so a test can point
+/// it at a local mock server instead of a live service.
+pub const DEFAULT_GEOCODING_BASE_URL: &str = "https://geocoding-api.open-meteo.com";
+
+/// The Open-Meteo forecast API's production host (no path), shared by
+/// `weather_get_current` and `weather_get_forecast`. Overridable via
+/// `--forecast-base-url` / `WEATHER_FORECAST_BASE_URL`.
+pub const DEFAULT_FORECAST_BASE_URL: &str = "https://api.open-meteo.com";
+
 /// Build the [`ServerConfig`] this server starts with.
 ///
 /// Kept as a library function (rather than inline in `main`) so the server-level

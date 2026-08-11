@@ -4,5 +4,8 @@
 !.cursor/rules/
 target
 
+# Agent worktrees live here; never commit them.
+.worktrees/
+
 # Gate and build output, never committed.
 *.log
